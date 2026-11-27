@@ -172,13 +172,11 @@ private fun GeneratedCharacterSceneCanvas(
         val w = size.width
         val h = size.height
 
-        // Arka plan degrade
         drawRect(
             brush = Brush.verticalGradient(colors = listOf(bgTop, bgBottom)),
             size = Size(w, h)
         )
 
-        // Atmosferik ışık halkaları ve yıldız/parçacık noktaları
         drawCircle(
             color = accentColor.copy(alpha = 0.14f),
             radius = minOf(w, h) * 0.42f,
@@ -196,7 +194,6 @@ private fun GeneratedCharacterSceneCanvas(
             )
         }
 
-        // Sahne zemin çizgisi
         drawRect(
             color = Color.Black.copy(alpha = 0.35f),
             topLeft = Offset(0f, h * 0.78f),
@@ -207,7 +204,6 @@ private fun GeneratedCharacterSceneCanvas(
         val headCenterY = h * 0.36f
         val headRadius = minOf(w, h) * 0.15f
 
-        // Karakter gövdesi / omuzlar
         val torsoPath = Path().apply {
             moveTo(centerX - headRadius * 1.9f, h * 0.85f)
             quadraticTo(
@@ -231,28 +227,24 @@ private fun GeneratedCharacterSceneCanvas(
             style = Stroke(width = 2.5f)
         )
 
-        // Boyun
         drawRect(
             color = skinTone,
             topLeft = Offset(centerX - headRadius * 0.35f, headCenterY + headRadius * 0.82f),
             size = Size(headRadius * 0.7f, headRadius * 0.55f)
         )
 
-        // Saç arka katmanı
         drawCircle(
             color = hairTone,
             radius = headRadius * 1.12f,
             center = Offset(centerX, headCenterY - headRadius * 0.08f)
         )
 
-        // Yüz
         drawCircle(
             color = skinTone,
             radius = headRadius,
             center = Offset(centerX, headCenterY)
         )
 
-        // Kahkül / ön saç detayı
         val fringePath = Path().apply {
             moveTo(centerX - headRadius * 1.02f, headCenterY - headRadius * 0.1f)
             quadraticTo(
@@ -273,7 +265,6 @@ private fun GeneratedCharacterSceneCanvas(
         }
         drawPath(path = fringePath, color = hairTone)
 
-        // Gözler ve ifade
         val eyeOffsetX = headRadius * 0.38f
         val eyeY = headCenterY + headRadius * 0.05f
         val eyeRadius = headRadius * 0.13f
@@ -291,7 +282,6 @@ private fun GeneratedCharacterSceneCanvas(
             center = Offset(centerX + eyeOffsetX - eyeRadius * 0.25f, eyeY - eyeRadius * 0.25f)
         )
 
-        // Ağız ifadesi (sahne sırasına göre hafif değişim)
         val mouthY = headCenterY + headRadius * 0.48f
         val mouthPath = Path().apply {
             moveTo(centerX - headRadius * 0.28f, mouthY)
@@ -593,4 +583,202 @@ private fun KurguTab(
     } else {
         1.03f
     }
-    val targetP
+    val targetPanX = if (isPlaying) {
+        if (currentIndex % 2 == 0) 26f else -26f
+    } else {
+        0f
+    }
+
+    val motionScale by animateFloatAsState(
+        targetValue = targetScale,
+        animationSpec = tween(durationMillis = 2000, easing = FastOutSlowInEasing),
+        label = "motionScale"
+    )
+    val motionPanX by animateFloatAsState(
+        targetValue = targetPanX,
+        animationSpec = tween(durationMillis = 2000, easing = FastOutSlowInEasing),
+        label = "motionPanX"
+    )
+
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "MiniKurgu Stüdyo",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold
+            )
+            FilledTonalButton(onClick = onPickImages) {
+                Icon(Icons.Rounded.AddPhotoAlternate, contentDescription = null)
+                Spacer(Modifier.width(4.dp))
+                Text("Görsel Seç (${selectedImages.size})")
+            }
+        }
+
+        Card(
+            border = BorderStroke(1.dp, amber),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF181A20)),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(230.dp)
+        ) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                if (sceneBitmap != null) {
+                    Image(
+                        bitmap = sceneBitmap,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .graphicsLayer {
+                                scaleX = motionScale
+                                scaleY = motionScale
+                                translationX = motionPanX
+                            }
+                    )
+                } else {
+                    GeneratedCharacterSceneCanvas(
+                        sceneText = currentLine,
+                        sceneIndex = currentIndex,
+                        format = format,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .graphicsLayer {
+                                scaleX = motionScale
+                                scaleY = motionScale
+                                translationX = motionPanX
+                            }
+                    )
+                }
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    Color.Black.copy(alpha = 0.45f),
+                                    Color.Transparent,
+                                    Color.Black.copy(alpha = 0.78f)
+                                )
+                            )
+                        )
+                )
+
+                Text(
+                    text = "$format • Sahne ${currentIndex + 1}/${scenes.size}",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = amber,
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(14.dp)
+                )
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(14.dp)
+                ) {
+                    if (linkedUri == null) {
+                        Icon(
+                            Icons.Rounded.AutoAwesome,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(Modifier.width(4.dp))
+                    }
+                    Text(
+                        text = if (linkedUri != null) {
+                            "🖼️ Görsel Bağlı (${(currentIndex % selectedImages.size) + 1}/${selectedImages.size})"
+                        } else {
+                            "✨ Karakter Üretildi • ${title.ifBlank { format }}"
+                        },
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.White
+                    )
+                }
+
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .padding(12.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(Color.Black.copy(alpha = 0.74f))
+                        .padding(10.dp)
+                ) {
+                    Text(
+                        text = currentLine,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.White,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+        }
+
+        Text(
+            text = "Zaman Çizelgesi (Sahneler)",
+            style = MaterialTheme.typography.titleMedium
+        )
+
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            itemsIndexed(scenes) { index, _ ->
+                FilterChip(
+                    selected = index == currentIndex,
+                    onClick = { onSelectScene(index) },
+                    label = { Text("Sahne ${index + 1}") }
+                )
+            }
+        }
+
+        Text(
+            text = "Durum: $statusInfo",
+            style = MaterialTheme.typography.bodySmall,
+            color = amber
+        )
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Button(
+                onClick = onPlayAll,
+                modifier = Modifier
+                    .weight(1f)
+                    .height(50.dp)
+            ) {
+                Icon(Icons.Rounded.PlayArrow, contentDescription = null)
+                Spacer(Modifier.width(4.dp))
+                Text("Oynat")
+            }
+
+            OutlinedButton(
+                onClick = onNext,
+                modifier = Modifier.height(50.dp)
+            ) {
+                Icon(Icons.Rounded.SkipNext, contentDescription = null)
+                Spacer(Modifier.width(2.dp))
+                Text("Sonraki")
+            }
+
+            OutlinedButton(
+                onClick = onStop,
+                modifier = Modifier.height(50.dp)
+            ) {
+                Icon(Icons.Rounded.Stop, contentDescription = null)
+                Spacer(Modifier.width(2.dp))
+                Text("Durdur")
