@@ -702,7 +702,8 @@ private fun KurguTab(
                     Text(
                         text = if (linkedUri != null) {
                             "🖼️ Görsel Bağlı (${(currentIndex % selectedImages.size) + 1}/${selectedImages.size})"
-                        } else {
+} else {
+                            
                             "✨ Karakter Üretildi • ${title.ifBlank { format }}"
                         },
                         style = MaterialTheme.typography.labelSmall,
