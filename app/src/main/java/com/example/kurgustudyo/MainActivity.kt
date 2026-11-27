@@ -133,7 +133,7 @@ private fun GeneratedCharacterSceneCanvas(
         lower.contains("gizem") ||
         lower.contains("korku")
 
-    val (bgTop, bgBottom, accentColor, outfitColor) = when {
+    val palette = when {
         isNightOrMystery -> listOf(
             Color(0xFF101528),
             Color(0xFF28193B),
@@ -159,6 +159,11 @@ private fun GeneratedCharacterSceneCanvas(
             Color(0xFF4EA8DE)
         )
     }
+
+    val bgTop = palette[0]
+    val bgBottom = palette[1]
+    val accentColor = palette[2]
+    val outfitColor = palette[3]
 
     val skinTone = Color(0xFFF1C29B)
     val hairTone = when (abs(sceneText.hashCode()) % 4) {
@@ -327,14 +332,14 @@ fun KurguStudyoApp() {
     var currentIndex by remember { mutableIntStateOf(0) }
     var isPlaying by remember { mutableStateOf(false) }
     var ttsReady by remember { mutableStateOf(false) }
-    var statusInfo by remember { mutableStateOf("Hazır • Otomatik karakter aktif") }
+    var statusInfo by remember { mutableStateOf("Hazir - Otomatik karakter aktif") }
 
     val imagePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetMultipleContents()
     ) { uris ->
         if (uris.isNotEmpty()) {
             selectedImages = uris
-            statusInfo = "${uris.size} özel görsel bağlandı"
+            statusInfo = "${uris.size} ozel gorsel baglandi"
         }
     }
 
@@ -365,7 +370,7 @@ fun KurguStudyoApp() {
         val safe = index.coerceIn(0, (scenes.size - 1).coerceAtLeast(0))
         currentIndex = safe
         val line = scenes.getOrElse(safe) { "" }
-        statusInfo = "Sahne ${safe + 1}/${scenes.size} oynatılıyor"
+        statusInfo = "Sahne ${safe + 1}/${scenes.size} oynatiliyor"
         if (ttsReady && line.isNotBlank()) {
             applyVoiceProfile(tts, selectedFormat, safe)
             tts?.speak(line, TextToSpeech.QUEUE_FLUSH, null, "kurgu_$safe")
@@ -388,7 +393,7 @@ fun KurguStudyoApp() {
                 currentIndex += 1
             } else {
                 isPlaying = false
-                statusInfo = "Tüm sahneler tamamlandı"
+                statusInfo = "Tum sahneler tamamlandi"
             }
         }
     }
@@ -484,7 +489,7 @@ private fun SenaryoTab(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text(
-            text = "Senaryo & Sahne Hazırlayıcı",
+            text = "Senaryo & Sahne Hazirlayici",
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold
         )
@@ -502,7 +507,7 @@ private fun SenaryoTab(
         OutlinedTextField(
             value = title,
             onValueChange = onTitleChange,
-            label = { Text("YouTube Video Başlığı") },
+            label = { Text("YouTube Video Basligi") },
             singleLine = true,
             modifier = Modifier.fillMaxWidth()
         )
@@ -510,14 +515,14 @@ private fun SenaryoTab(
         OutlinedTextField(
             value = script,
             onValueChange = onScriptChange,
-            label = { Text("Kurgunu yaz (her cümle otomatik sahne olur)") },
+            label = { Text("Kurgunu yaz (her cumle otomatik sahne olur)") },
             minLines = 5,
             maxLines = 9,
             modifier = Modifier.fillMaxWidth()
         )
 
         Text(
-            text = "Oluşan Sahne Kartları (${scenes.size})",
+            text = "Olusan Sahne Kartlari (${scenes.size})",
             style = MaterialTheme.typography.titleMedium
         )
 
@@ -548,7 +553,7 @@ private fun SenaryoTab(
                 .fillMaxWidth()
                 .height(52.dp)
         ) {
-            Text("2. Sekmeye (Kurguya) Aktar →")
+            Text("2. Sekmeye (Kurguya) Aktar")
         }
     }
 }
@@ -613,14 +618,14 @@ private fun KurguTab(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "MiniKurgu Stüdyo",
+                text = "MiniKurgu Studyo",
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold
             )
             FilledTonalButton(onClick = onPickImages) {
                 Icon(Icons.Rounded.AddPhotoAlternate, contentDescription = null)
                 Spacer(Modifier.width(4.dp))
-                Text("Görsel Seç (${selectedImages.size})")
+                Text("Gorsel Sec (${selectedImages.size})")
             }
         }
 
@@ -676,7 +681,7 @@ private fun KurguTab(
                 )
 
                 Text(
-                    text = "$format • Sahne ${currentIndex + 1}/${scenes.size}",
+                    text = "$format - Sahne ${currentIndex + 1}/${scenes.size}",
                     style = MaterialTheme.typography.labelMedium,
                     color = amber,
                     modifier = Modifier
@@ -698,16 +703,17 @@ private fun KurguTab(
                             modifier = Modifier.size(14.dp)
                         )
                         Spacer(Modifier.width(4.dp))
-                                        Text(
-                        text = if (linkedUri != null) {
-                            "Gorsel Bagli (${(currentIndex % selectedImages.size) + 1}/${selectedImages.size})"
-                        } else {
-                            "Karakter Uretildi - ${title.ifBlank { format }}"
-                        },
+                    }
+                    val badgeLabel = if (linkedUri != null) {
+                        "Gorsel Bagli (${(currentIndex % selectedImages.size) + 1}/${selectedImages.size})"
+                    } else {
+                        "Karakter Uretildi - ${title.ifBlank { format }}"
+                    }
+                    Text(
+                        text = badgeLabel,
                         style = MaterialTheme.typography.labelSmall,
                         color = Color.White
                     )
-                                        
                 }
 
                 Box(
@@ -731,7 +737,7 @@ private fun KurguTab(
         }
 
         Text(
-            text = "Zaman Çizelgesi (Sahneler)",
+            text = "Zaman Cizelgesi (Sahneler)",
             style = MaterialTheme.typography.titleMedium
         )
 
@@ -782,3 +788,7 @@ private fun KurguTab(
                 Icon(Icons.Rounded.Stop, contentDescription = null)
                 Spacer(Modifier.width(2.dp))
                 Text("Durdur")
+            }
+        }
+    }
+}
