@@ -14,6 +14,7 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -25,6 +26,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AddPhotoAlternate
+import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.EditNote
 import androidx.compose.material.icons.rounded.MovieCreation
 import androidx.compose.material.icons.rounded.PlayArrow
@@ -35,10 +37,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -47,6 +53,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import java.util.Locale
+import kotlin.math.abs
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -80,6 +87,17 @@ private fun splitScenes(text: String, title: String, format: String): List<Strin
     )
 }
 
+private fun applyVoiceProfile(tts: TextToSpeech?, format: String, sceneIndex: Int) {
+    if (tts == null) return
+    val (rate, pitch) = when (format) {
+        "Bilgi Shorts" -> 1.08f to (1.03f + (sceneIndex % 2) * 0.02f)
+        "Duygusal Hikaye" -> 0.92f to (0.95f + (sceneIndex % 2) * 0.02f)
+        else -> 1.02f to (1.04f + (sceneIndex % 3) * 0.02f)
+    }
+    tts.setSpeechRate(rate.coerceIn(0.75f, 1.35f))
+    tts.setPitch(pitch.coerceIn(0.8f, 1.25f))
+}
+
 @Composable
 private fun rememberBitmapFromUri(uri: Uri?): ImageBitmap? {
     val context = LocalContext.current
@@ -102,6 +120,206 @@ private fun rememberBitmapFromUri(uri: Uri?): ImageBitmap? {
 }
 
 @Composable
+private fun GeneratedCharacterSceneCanvas(
+    sceneText: String,
+    sceneIndex: Int,
+    format: String,
+    modifier: Modifier = Modifier
+) {
+    val lower = sceneText.lowercase(Locale("tr", "TR"))
+    val isNightOrMystery = lower.contains("gece") ||
+        lower.contains("karanlık") ||
+        lower.contains("geçmiş") ||
+        lower.contains("gizem") ||
+        lower.contains("korku")
+
+    val (bgTop, bgBottom, accentColor, outfitColor) = when {
+        isNightOrMystery -> listOf(
+            Color(0xFF101528),
+            Color(0xFF28193B),
+            Color(0xFF7CE8FF),
+            Color(0xFF4B3F72)
+        )
+        format == "Bilgi Shorts" -> listOf(
+            Color(0xFF0F2438),
+            Color(0xFF1A4359),
+            Color(0xFFFFC857),
+            Color(0xFF2EC4B6)
+        )
+        format == "Duygusal Hikaye" -> listOf(
+            Color(0xFF2B192E),
+            Color(0xFF5C2A47),
+            Color(0xFFFF9EBB),
+            Color(0xFF9D4EDD)
+        )
+        else -> listOf(
+            Color(0xFF1B263B),
+            Color(0xFF3D348B),
+            Color(0xFFFFB300),
+            Color(0xFF4EA8DE)
+        )
+    }
+
+    val skinTone = Color(0xFFF1C29B)
+    val hairTone = when (abs(sceneText.hashCode()) % 4) {
+        0 -> Color(0xFF2B1B17)
+        1 -> Color(0xFF6B3E26)
+        2 -> Color(0xFFD4A359)
+        else -> Color(0xFF1C2541)
+    }
+
+    Canvas(modifier = modifier) {
+        val w = size.width
+        val h = size.height
+
+        // Arka plan degrade
+        drawRect(
+            brush = Brush.verticalGradient(colors = listOf(bgTop, bgBottom)),
+            size = Size(w, h)
+        )
+
+        // Atmosferik ışık halkaları ve yıldız/parçacık noktaları
+        drawCircle(
+            color = accentColor.copy(alpha = 0.14f),
+            radius = minOf(w, h) * 0.42f,
+            center = Offset(w * 0.5f, h * 0.44f)
+        )
+
+        for (i in 0 until 12) {
+            val px = (((i * 97 + sceneIndex * 53) % 100) / 100f) * w
+            val py = (((i * 61 + sceneIndex * 37) % 70) / 100f) * h
+            val r = if (i % 2 == 0) 3.2f else 2.0f
+            drawCircle(
+                color = accentColor.copy(alpha = 0.45f),
+                radius = r,
+                center = Offset(px, py)
+            )
+        }
+
+        // Sahne zemin çizgisi
+        drawRect(
+            color = Color.Black.copy(alpha = 0.35f),
+            topLeft = Offset(0f, h * 0.78f),
+            size = Size(w, h * 0.22f)
+        )
+
+        val centerX = w * 0.5f
+        val headCenterY = h * 0.36f
+        val headRadius = minOf(w, h) * 0.15f
+
+        // Karakter gövdesi / omuzlar
+        val torsoPath = Path().apply {
+            moveTo(centerX - headRadius * 1.9f, h * 0.85f)
+            quadraticTo(
+                centerX - headRadius * 1.6f,
+                headCenterY + headRadius * 1.25f,
+                centerX,
+                headCenterY + headRadius * 1.25f
+            )
+            quadraticTo(
+                centerX + headRadius * 1.6f,
+                headCenterY + headRadius * 1.25f,
+                centerX + headRadius * 1.9f,
+                h * 0.85f
+            )
+            close()
+        }
+        drawPath(path = torsoPath, color = outfitColor)
+        drawPath(
+            path = torsoPath,
+            color = accentColor.copy(alpha = 0.65f),
+            style = Stroke(width = 2.5f)
+        )
+
+        // Boyun
+        drawRect(
+            color = skinTone,
+            topLeft = Offset(centerX - headRadius * 0.35f, headCenterY + headRadius * 0.82f),
+            size = Size(headRadius * 0.7f, headRadius * 0.55f)
+        )
+
+        // Saç arka katmanı
+        drawCircle(
+            color = hairTone,
+            radius = headRadius * 1.12f,
+            center = Offset(centerX, headCenterY - headRadius * 0.08f)
+        )
+
+        // Yüz
+        drawCircle(
+            color = skinTone,
+            radius = headRadius,
+            center = Offset(centerX, headCenterY)
+        )
+
+        // Kahkül / ön saç detayı
+        val fringePath = Path().apply {
+            moveTo(centerX - headRadius * 1.02f, headCenterY - headRadius * 0.1f)
+            quadraticTo(
+                centerX - headRadius * 0.35f,
+                headCenterY - headRadius * 0.95f,
+                centerX + headRadius * 0.25f,
+                headCenterY - headRadius * 0.35f
+            )
+            quadraticTo(
+                centerX + headRadius * 0.75f,
+                headCenterY - headRadius * 0.85f,
+                centerX + headRadius * 1.02f,
+                headCenterY - headRadius * 0.1f
+            )
+            lineTo(centerX + headRadius * 1.02f, headCenterY - headRadius * 0.45f)
+            lineTo(centerX - headRadius * 1.02f, headCenterY - headRadius * 0.45f)
+            close()
+        }
+        drawPath(path = fringePath, color = hairTone)
+
+        // Gözler ve ifade
+        val eyeOffsetX = headRadius * 0.38f
+        val eyeY = headCenterY + headRadius * 0.05f
+        val eyeRadius = headRadius * 0.13f
+
+        drawCircle(color = Color(0xFF1A1A1A), radius = eyeRadius, center = Offset(centerX - eyeOffsetX, eyeY))
+        drawCircle(color = Color(0xFF1A1A1A), radius = eyeRadius, center = Offset(centerX + eyeOffsetX, eyeY))
+        drawCircle(
+            color = Color.White,
+            radius = eyeRadius * 0.42f,
+            center = Offset(centerX - eyeOffsetX - eyeRadius * 0.25f, eyeY - eyeRadius * 0.25f)
+        )
+        drawCircle(
+            color = Color.White,
+            radius = eyeRadius * 0.42f,
+            center = Offset(centerX + eyeOffsetX - eyeRadius * 0.25f, eyeY - eyeRadius * 0.25f)
+        )
+
+        // Ağız ifadesi (sahne sırasına göre hafif değişim)
+        val mouthY = headCenterY + headRadius * 0.48f
+        val mouthPath = Path().apply {
+            moveTo(centerX - headRadius * 0.28f, mouthY)
+            if (sceneIndex % 2 == 0) {
+                quadraticTo(
+                    centerX,
+                    mouthY + headRadius * 0.22f,
+                    centerX + headRadius * 0.28f,
+                    mouthY
+                )
+            } else {
+                quadraticTo(
+                    centerX,
+                    mouthY + headRadius * 0.08f,
+                    centerX + headRadius * 0.28f,
+                    mouthY
+                )
+            }
+        }
+        drawPath(
+            path = mouthPath,
+            color = Color(0xFF8D4A43),
+            style = Stroke(width = 3f)
+        )
+    }
+}
+
+@Composable
 fun KurguStudyoApp() {
     val context = LocalContext.current
     var selectedTab by remember { mutableIntStateOf(0) }
@@ -119,14 +337,14 @@ fun KurguStudyoApp() {
     var currentIndex by remember { mutableIntStateOf(0) }
     var isPlaying by remember { mutableStateOf(false) }
     var ttsReady by remember { mutableStateOf(false) }
-    var statusInfo by remember { mutableStateOf("Hazır") }
+    var statusInfo by remember { mutableStateOf("Hazır • Otomatik karakter aktif") }
 
     val imagePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetMultipleContents()
     ) { uris ->
         if (uris.isNotEmpty()) {
             selectedImages = uris
-            statusInfo = "${uris.size} görsel sahnelere bağlandı"
+            statusInfo = "${uris.size} özel görsel bağlandı"
         }
     }
 
@@ -159,6 +377,7 @@ fun KurguStudyoApp() {
         val line = scenes.getOrElse(safe) { "" }
         statusInfo = "Sahne ${safe + 1}/${scenes.size} oynatılıyor"
         if (ttsReady && line.isNotBlank()) {
+            applyVoiceProfile(tts, selectedFormat, safe)
             tts?.speak(line, TextToSpeech.QUEUE_FLUSH, null, "kurgu_$safe")
         }
     }
@@ -172,7 +391,7 @@ fun KurguStudyoApp() {
     LaunchedEffect(isPlaying, currentIndex, scenes) {
         if (!isPlaying || scenes.isEmpty()) return@LaunchedEffect
         playSceneAt(currentIndex)
-        val duration = (scenes[currentIndex].length * 65L).coerceIn(2500L, 8500L)
+        val duration = (scenes[currentIndex].length * 68L).coerceIn(2600L, 9000L)
         delay(duration)
         if (isPlaying) {
             if (currentIndex + 1 < scenes.size) {
@@ -361,6 +580,7 @@ private fun KurguTab(
     onSelectScene: (Int) -> Unit
 ) {
     val amber = Color(0xFFFFB300)
+    val currentLine = scenes.getOrElse(currentIndex) { "" }
     val linkedUri = if (selectedImages.isNotEmpty()) {
         selectedImages[currentIndex % selectedImages.size]
     } else {
@@ -369,180 +589,8 @@ private fun KurguTab(
     val sceneBitmap = rememberBitmapFromUri(linkedUri)
 
     val targetScale = if (isPlaying) {
-        if (currentIndex % 2 == 0) 1.12f else 1.06f
+        if (currentIndex % 2 == 0) 1.14f else 1.07f
     } else {
-        1.02f
+        1.03f
     }
-    val targetPanX = if (isPlaying) {
-        if (currentIndex % 2 == 0) 24f else -24f
-    } else {
-        0f
-    }
-
-    val motionScale by animateFloatAsState(
-        targetValue = targetScale,
-        animationSpec = tween(durationMillis = 2200, easing = FastOutSlowInEasing),
-        label = "motionScale"
-    )
-    val motionPanX by animateFloatAsState(
-        targetValue = targetPanX,
-        animationSpec = tween(durationMillis = 2200, easing = FastOutSlowInEasing),
-        label = "motionPanX"
-    )
-
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "MiniKurgu Stüdyo",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
-            )
-            FilledTonalButton(onClick = onPickImages) {
-                Icon(Icons.Rounded.AddPhotoAlternate, contentDescription = null)
-                Spacer(Modifier.width(4.dp))
-                Text("Görsel Seç (${selectedImages.size})")
-            }
-        }
-
-        Card(
-            border = BorderStroke(1.dp, amber),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFF181A20)),
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(230.dp)
-        ) {
-            Box(modifier = Modifier.fillMaxSize()) {
-                if (sceneBitmap != null) {
-                    Image(
-                        bitmap = sceneBitmap,
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .graphicsLayer {
-                                scaleX = motionScale
-                                scaleY = motionScale
-                                translationX = motionPanX
-                            }
-                    )
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(
-                                Brush.verticalGradient(
-                                    colors = listOf(
-                                        Color.Black.copy(alpha = 0.45f),
-                                        Color.Transparent,
-                                        Color.Black.copy(alpha = 0.75f)
-                                    )
-                                )
-                            )
-                    )
-                }
-
-                Text(
-                    text = "$format • Sahne ${currentIndex + 1}/${scenes.size}",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = amber,
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .padding(14.dp)
-                )
-
-                Text(
-                    text = if (linkedUri != null) "🖼️ Görsel Bağlı (${(currentIndex % selectedImages.size) + 1}/${selectedImages.size})"
-                    else "🎬 ${title.ifBlank { "Sahne Önizleme" }}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Color.White,
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(14.dp)
-                )
-
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .fillMaxWidth()
-                        .padding(12.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(Color.Black.copy(alpha = 0.72f))
-                        .padding(10.dp)
-                ) {
-                    Text(
-                        text = scenes.getOrElse(currentIndex) { "" },
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.White,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-            }
-        }
-
-        Text(
-            text = "Zaman Çizelgesi (Sahneler)",
-            style = MaterialTheme.typography.titleMedium
-        )
-
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            itemsIndexed(scenes) { index, _ ->
-                FilterChip(
-                    selected = index == currentIndex,
-                    onClick = { onSelectScene(index) },
-                    label = { Text("Sahne ${index + 1}") }
-                )
-            }
-        }
-
-        Text(
-            text = "Durum: $statusInfo",
-            style = MaterialTheme.typography.bodySmall,
-            color = amber
-        )
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Button(
-                onClick = onPlayAll,
-                modifier = Modifier
-                    .weight(1f)
-                    .height(50.dp)
-            ) {
-                Icon(Icons.Rounded.PlayArrow, contentDescription = null)
-                Spacer(Modifier.width(4.dp))
-                Text("Oynat")
-            }
-
-            OutlinedButton(
-                onClick = onNext,
-                modifier = Modifier.height(50.dp)
-            ) {
-                Icon(Icons.Rounded.SkipNext, contentDescription = null)
-                Spacer(Modifier.width(2.dp))
-                Text("Sonraki")
-            }
-
-            OutlinedButton(
-                onClick = onStop,
-                modifier = Modifier.height(50.dp)
-            ) {
-                Icon(Icons.Rounded.Stop, contentDescription = null)
-                Spacer(Modifier.width(2.dp))
-                Text("Durdur")
-            }
-        }
-    }
-}
+    val targetP
