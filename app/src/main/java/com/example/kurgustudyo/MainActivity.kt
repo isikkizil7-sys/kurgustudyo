@@ -698,17 +698,16 @@ private fun KurguTab(
                             modifier = Modifier.size(14.dp)
                         )
                         Spacer(Modifier.width(4.dp))
-                    }
-                    Text(
+                                        Text(
                         text = if (linkedUri != null) {
-                            "🖼️ Görsel Bağlı (${(currentIndex % selectedImages.size) + 1}/${selectedImages.size})"
-} else {
-                            
-                            "✨ Karakter Üretildi • ${title.ifBlank { format }}"
+                            "Gorsel Bagli (${(currentIndex % selectedImages.size) + 1}/${selectedImages.size})"
+                        } else {
+                            "Karakter Uretildi - ${title.ifBlank { format }}"
                         },
                         style = MaterialTheme.typography.labelSmall,
                         color = Color.White
                     )
+                                        
                 }
 
                 Box(
