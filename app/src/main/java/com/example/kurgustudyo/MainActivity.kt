@@ -1,19 +1,20 @@
 package com.example.kurgustudyo
 
+import android.graphics.ImageDecoder
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.provider.MediaStore
 import android.speech.tts.TextToSpeech
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
@@ -34,8 +35,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -76,6 +81,27 @@ private fun splitScenes(text: String, title: String, format: String): List<Strin
 }
 
 @Composable
+private fun rememberBitmapFromUri(uri: Uri?): ImageBitmap? {
+    val context = LocalContext.current
+    val bitmap by produceState<ImageBitmap?>(initialValue = null, key1 = uri) {
+        value = if (uri == null) {
+            null
+        } else {
+            runCatching {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    val source = ImageDecoder.createSource(context.contentResolver, uri)
+                    ImageDecoder.decodeBitmap(source).asImageBitmap()
+                } else {
+                    @Suppress("DEPRECATION")
+                    MediaStore.Images.Media.getBitmap(context.contentResolver, uri).asImageBitmap()
+                }
+            }.getOrNull()
+        }
+    }
+    return bitmap
+}
+
+@Composable
 fun KurguStudyoApp() {
     val context = LocalContext.current
     var selectedTab by remember { mutableIntStateOf(0) }
@@ -100,7 +126,7 @@ fun KurguStudyoApp() {
     ) { uris ->
         if (uris.isNotEmpty()) {
             selectedImages = uris
-            statusInfo = "${uris.size} görsel sahneye bağlandı"
+            statusInfo = "${uris.size} görsel sahnelere bağlandı"
         }
     }
 
@@ -335,15 +361,33 @@ private fun KurguTab(
     onSelectScene: (Int) -> Unit
 ) {
     val amber = Color(0xFFFFB300)
-    val transition = rememberInfiniteTransition(label = "previewPulse")
-    val pulse by transition.animateFloat(
-        initialValue = 1f,
-        targetValue = if (isPlaying) 1.04f else 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(500, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "pulse"
+    val linkedUri = if (selectedImages.isNotEmpty()) {
+        selectedImages[currentIndex % selectedImages.size]
+    } else {
+        null
+    }
+    val sceneBitmap = rememberBitmapFromUri(linkedUri)
+
+    val targetScale = if (isPlaying) {
+        if (currentIndex % 2 == 0) 1.12f else 1.06f
+    } else {
+        1.02f
+    }
+    val targetPanX = if (isPlaying) {
+        if (currentIndex % 2 == 0) 24f else -24f
+    } else {
+        0f
+    }
+
+    val motionScale by animateFloatAsState(
+        targetValue = targetScale,
+        animationSpec = tween(durationMillis = 2200, easing = FastOutSlowInEasing),
+        label = "motionScale"
+    )
+    val motionPanX by animateFloatAsState(
+        targetValue = targetPanX,
+        animationSpec = tween(durationMillis = 2200, easing = FastOutSlowInEasing),
+        label = "motionPanX"
     )
 
     Column(
@@ -376,37 +420,64 @@ private fun KurguTab(
             colors = CardDefaults.cardColors(containerColor = Color(0xFF181A20)),
             modifier = Modifier
                 .fillMaxWidth()
-                .height(220.dp)
-                .scale(pulse)
+                .height(230.dp)
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp)
-            ) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                if (sceneBitmap != null) {
+                    Image(
+                        bitmap = sceneBitmap,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .graphicsLayer {
+                                scaleX = motionScale
+                                scaleY = motionScale
+                                translationX = motionPanX
+                            }
+                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(
+                                Brush.verticalGradient(
+                                    colors = listOf(
+                                        Color.Black.copy(alpha = 0.45f),
+                                        Color.Transparent,
+                                        Color.Black.copy(alpha = 0.75f)
+                                    )
+                                )
+                            )
+                    )
+                }
+
                 Text(
                     text = "$format • Sahne ${currentIndex + 1}/${scenes.size}",
                     style = MaterialTheme.typography.labelMedium,
                     color = amber,
-                    modifier = Modifier.align(Alignment.TopStart)
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(14.dp)
                 )
 
-                val linkedUri = selectedImages.getOrNull(currentIndex)
                 Text(
-                    text = if (linkedUri != null) "🖼️ Görsel Bağlı (#${currentIndex + 1})"
+                    text = if (linkedUri != null) "🖼️ Görsel Bağlı (${(currentIndex % selectedImages.size) + 1}/${selectedImages.size})"
                     else "🎬 ${title.ifBlank { "Sahne Önizleme" }}",
                     style = MaterialTheme.typography.labelSmall,
-                    color = Color.LightGray,
-                    modifier = Modifier.align(Alignment.TopEnd)
+                    color = Color.White,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(14.dp)
                 )
 
                 Box(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .fillMaxWidth()
+                        .padding(12.dp)
                         .clip(RoundedCornerShape(10.dp))
                         .background(Color.Black.copy(alpha = 0.72f))
-                        .padding(12.dp)
+                        .padding(10.dp)
                 ) {
                     Text(
                         text = scenes.getOrElse(currentIndex) { "" },
